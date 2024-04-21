@@ -1,3 +1,5 @@
+
+
 from flask import Flask, request, redirect, render_template, flash
 from flask_debugtoolbar import DebugToolbarExtension
 from models import db, connect_db, User, Post
@@ -8,20 +10,28 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'ihaveasecret'
 
 
+# app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 toolbar = DebugToolbarExtension(app)
 
-
 connect_db(app)
 with app.app_context():
-    db.create_all()
-
+     db.create_all()
 
 @app.route('/')
 def root():
-    """Homepage redirects to list of users."""
+    """Show recent list of posts, most-recent first."""
+    with app.app_context():
 
-    return redirect("/users")
+        posts = Post.query.order_by(Post.created_at.desc()).limit(5).all()
+        return render_template("posts/homepage.html", posts=posts)
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Show 404 NOT FOUND page."""
+
+    return render_template('404.html'), 404
 
 
 
@@ -51,6 +61,7 @@ def users_new():
 
     db.session.add(new_user)
     db.session.commit()
+    flash(f"User {new_user.full_name} added.")
 
     return redirect("/users")
 
@@ -82,6 +93,7 @@ def users_update(user_id):
 
     db.session.add(user)
     db.session.commit()
+    flash(f"User {user.full_name} edited.")
 
     return redirect("/users")
 
@@ -93,9 +105,9 @@ def users_destroy(user_id):
     user = User.query.get_or_404(user_id)
     db.session.delete(user)
     db.session.commit()
+    flash(f"User {user.full_name} deleted.")
 
     return redirect("/users")
-
 
 @app.route('/users/<int:user_id>/posts/new')
 def posts_new_form(user_id):
